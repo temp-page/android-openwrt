@@ -32,6 +32,8 @@ jobs:
       - name: Fetch and configure OpenWrt
         run: |
           git clone --depth 1 --branch "$OPENWRT_REF" https://github.com/openwrt/openwrt.git openwrt
+          ./openwrt/scripts/feeds update -a
+          ./openwrt/scripts/feeds install -a
           cp openwrt-ipset.config openwrt/.config
           # Android supplies its own IPSet kernel support, so avoid depending on
           # the incompatible OpenWrt 6.6 kmod package.
@@ -42,6 +44,8 @@ jobs:
       - name: Build IPSet-only dnsmasq-full
         run: |
           make -C openwrt download -j"$(nproc)"
+          make -C openwrt tools/install -j"$(nproc)" V=s
+          make -C openwrt toolchain/install -j"$(nproc)" V=s
           make -C openwrt package/network/services/dnsmasq/compile -j"$(nproc)" V=s
           mkdir -p artifacts
           ipk=$(find openwrt/bin/packages/aarch64_generic -name 'dnsmasq-full_*.ipk' -print -quit)
