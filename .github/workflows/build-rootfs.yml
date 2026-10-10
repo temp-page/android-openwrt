@@ -43,10 +43,13 @@ jobs:
 
       - name: Build IPSet-only dnsmasq-full
         run: |
-          make -C openwrt download -j"$(nproc)"
-          make -C openwrt tools/install -j"$(nproc)" V=s
-          make -C openwrt toolchain/install -j"$(nproc)" V=s
-          make -C openwrt package/network/services/dnsmasq/compile -j"$(nproc)" V=s
+          set -o pipefail
+          {
+            make -C openwrt download -j"$(nproc)"
+            make -C openwrt tools/install -j"$(nproc)" V=s
+            make -C openwrt toolchain/install -j"$(nproc)" V=s
+            make -C openwrt package/network/services/dnsmasq/compile -j"$(nproc)" V=s
+          } 2>&1 | tee build-dnsmasq.log
           mkdir -p artifacts
           ipk=$(find openwrt/bin/packages/aarch64_generic -name 'dnsmasq-full_*.ipk' -print -quit)
           test -n "$ipk"
@@ -56,6 +59,17 @@ jobs:
           artifacts/dnsmasq --version | tee artifacts/dnsmasq-version.txt
           grep -q 'ipset' artifacts/dnsmasq-version.txt
           ! grep -q 'nftset' artifacts/dnsmasq-version.txt
+
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-diagnostics-${{ github.run_number }}
+          path: |
+            build-dnsmasq.log
+            openwrt/logs/
+          if-no-files-found: warn
+          retention-days: 30
 
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
