@@ -43,9 +43,11 @@ jobs:
           ./openwrt/scripts/feeds update -a
           ./openwrt/scripts/feeds install -a
           cp openwrt-ipset.config openwrt/.config
-          # Android supplies its own IPSet kernel support, so avoid depending on
-          # the incompatible OpenWrt 6.6 kmod package.
-          sed -i 's/+PACKAGE_dnsmasq_full_ipset:kmod-ipt-ipset/+PACKAGE_dnsmasq_full_ipset:ipset/' \
+          # IPSet support in dnsmasq uses kernel UAPI headers only.  Do not
+          # make its IPK depend on an OpenWrt 6.6 kmod: Droidspaces uses the
+          # Android host kernel, and building the kmod also drags in a full
+          # (unneeded) OpenWrt kernel build.
+          sed -i 's/+PACKAGE_dnsmasq_full_ipset:kmod-ipt-ipset//' \
             openwrt/package/network/services/dnsmasq/Makefile
           make -C openwrt defconfig
           printf '%s | OpenWrt configured\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" | tee -a build-progress.log
@@ -67,6 +69,8 @@ jobs:
           ipk=$(find openwrt/bin/packages/aarch64_generic -name 'dnsmasq-full_*.ipk' -print -quit)
           test -n "$ipk"
           cp "$ipk" artifacts/dnsmasq-full-ipset.ipk
+          ar p artifacts/dnsmasq-full-ipset.ipk control.tar.gz | tar -xzOf - ./control > artifacts/dnsmasq-control.txt
+          ! grep -q 'kmod-ipt-ipset' artifacts/dnsmasq-control.txt
           ar p artifacts/dnsmasq-full-ipset.ipk data.tar.gz | tar -xzOf - ./usr/sbin/dnsmasq > artifacts/dnsmasq
           chmod +x artifacts/dnsmasq
           artifacts/dnsmasq --version | tee artifacts/dnsmasq-version.txt
