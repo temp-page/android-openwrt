@@ -43,13 +43,20 @@ jobs:
           curl --fail --location --retry 3 --output openwrt-sdk.tar.zst "$SDK_URL"
           mkdir openwrt
           tar --use-compress-program=unzstd --strip-components=1 -xf openwrt-sdk.tar.zst -C openwrt
+          # The SDK ships a prepared build environment but not source recipes
+          # for core packages. Fetch only the matching dnsmasq recipe.
+          printf '%s | fetching dnsmasq package recipe\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" | tee -a build-progress.log
+          git clone --depth 1 --filter=blob:none --sparse --branch "v$OPENWRT_VERSION" \
+            https://github.com/openwrt/openwrt.git openwrt-source
+          git -C openwrt-source sparse-checkout set package/network/services/dnsmasq
+          cp -a openwrt-source/package/network/services/dnsmasq openwrt/package/
           cat openwrt-ipset.config >> openwrt/.config
           # IPSet support in dnsmasq uses kernel UAPI headers only.  Do not
           # make its IPK depend on an OpenWrt 6.6 kmod: Droidspaces uses the
           # Android host kernel, and building the kmod also drags in a full
           # (unneeded) OpenWrt kernel build.
           sed -i 's/+PACKAGE_dnsmasq_full_ipset:kmod-ipt-ipset//' \
-            openwrt/package/network/services/dnsmasq/Makefile
+            openwrt/package/dnsmasq/Makefile
           make -C openwrt defconfig
           printf '%s | OpenWrt configured\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" | tee -a build-progress.log
 
@@ -58,7 +65,7 @@ jobs:
           set -o pipefail
           {
             printf '%s | building IPSet-only dnsmasq-full\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" | tee -a build-progress.log
-            make -C openwrt package/network/services/dnsmasq/compile -j"$(nproc)" V=s
+            make -C openwrt package/dnsmasq/compile -j"$(nproc)" V=s
           } 2>&1 | tee build-dnsmasq.log
           mkdir -p artifacts
           ipk=$(find openwrt/bin/packages/aarch64_generic -name 'dnsmasq-full_*.ipk' -print -quit)
