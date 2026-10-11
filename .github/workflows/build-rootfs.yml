@@ -57,6 +57,12 @@ jobs:
           # (unneeded) OpenWrt kernel build.
           sed -i 's/+PACKAGE_dnsmasq_full_ipset:kmod-ipt-ipset//' \
             openwrt/package/dnsmasq/Makefile
+          # The SDK does not stage target libubox development headers. UBUS
+          # is not required for DNS/DHCP or OpenClash's legacy IPSet mode.
+          sed -i 's/DEPENDS:=+libubus +@BUSYBOX_CONFIG_PIDOF/DEPENDS:=+@BUSYBOX_CONFIG_PIDOF/' \
+            openwrt/package/dnsmasq/Makefile
+          sed -i 's/COPTS = -DHAVE_UBUS -DHAVE_POLL_H/COPTS = -DHAVE_POLL_H/' \
+            openwrt/package/dnsmasq/Makefile
           make -C openwrt defconfig
           printf '%s | OpenWrt configured\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" | tee -a build-progress.log
 
