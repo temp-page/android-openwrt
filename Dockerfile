@@ -1,7 +1,11 @@
 # Droidspaces OpenWrt 24.10 rootfs with an IPSet-only dnsmasq-full.
 ARG OPENWRT_VERSION=24.10.7
+# OpenWrt publishes this image with the nonstandard manifest architecture
+# "aarch64_generic".  Pinning its platform manifest bypasses Buildx's normal
+# linux/arm64 manifest lookup; RUN instructions still execute under QEMU arm64.
+ARG OPENWRT_ROOTFS_DIGEST=sha256:96b2c09aa25a751946d1caa297fc7c5d7498f60d346f8350513f3ade878d4703
 
-FROM --platform=linux/arm64 openwrt/rootfs:armsr-armv8-${OPENWRT_VERSION} AS upstream
+FROM --platform=linux/arm64 openwrt/rootfs@${OPENWRT_ROOTFS_DIGEST} AS upstream
 FROM scratch AS customizer
 COPY --from=upstream / /
 COPY artifacts/dnsmasq-full-ipset.ipk /tmp/dnsmasq-full-ipset.ipk
