@@ -70,7 +70,7 @@ jobs:
           chmod +x artifacts/dnsmasq
           strings artifacts/dnsmasq > artifacts/dnsmasq-strings.txt
           grep -qi 'ipset' artifacts/dnsmasq-strings.txt
-          ! grep -qi 'nftset' artifacts/dnsmasq-strings.txt
+          grep -qi 'no-nftset' artifacts/dnsmasq-strings.txt
           printf '%s | dnsmasq package verified\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" | tee -a build-progress.log
 
       - uses: docker/setup-qemu-action@v3
