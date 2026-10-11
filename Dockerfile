@@ -79,6 +79,13 @@ config zone
 config forwarding
         option src 'lan'
         option dest 'wan'
+config rule
+        option name 'Allow-Droidspaces-LuCI'
+        option src 'wan'
+        option src_ip '172.28.0.1'
+        option proto 'tcp'
+        option dest_port '80 443'
+        option target 'ACCEPT'
 FWEOF
 
 echo 'net.ipv4.ip_forward=1' >/etc/sysctl.d/30-droidspaces.conf
