@@ -25,10 +25,24 @@ opkg remove --force-depends firewall4 nftables-json kmod-nft-offload kmod-nft-na
 # `luci` meta package because it pulls the firewall UI package, which targets
 # firewall4/nftables; the selected modules provide the normal admin UI while
 # keeping fw3/iptables-legacy intact.
-opkg install firewall iptables-zz-legacy ip6tables-zz-legacy ipset coreutils-base64 shadow-utils \
+opkg install firewall iptables-zz-legacy ip6tables-zz-legacy ip-full ipset coreutils-base64 shadow-utils \
   uhttpd uhttpd-mod-ubus rpcd luci-base luci-mod-admin-full luci-theme-bootstrap
 ln -sf /usr/sbin/iptables-legacy /usr/sbin/iptables
 ln -sf /usr/sbin/ip6tables-legacy /usr/sbin/ip6tables
+
+# Droidspaces shares Android's kernel.  This device exposes the TPROXY,
+# socket, MARK and CONNMARK netfilter capabilities, so only the matching
+# xtables *user-space* parsers are needed in this rootfs.  Do not retain
+# OpenWrt's target-specific .ko modules: they cannot be loaded into Android's
+# host kernel.  --force-depends deliberately installs just the parsers while
+# the kernel dependencies are supplied by the Android host.
+opkg install --force-depends iptables-mod-extra iptables-mod-conntrack-extra \
+  iptables-mod-socket iptables-mod-tproxy
+test -f /usr/lib/iptables/libxt_TPROXY.so
+test -f /usr/lib/iptables/libxt_socket.so
+test -f /usr/lib/iptables/libxt_CONNMARK.so
+find /lib/modules -type f -name '*.ko' -delete 2>/dev/null || true
+rm -f /etc/modules.d/*tproxy* /etc/modules.d/*socket* /etc/modules.d/*conntrack* || true
 
 # The package is IPSet-only, with no Android-incompatible nftset support.
 opkg remove --force-depends dnsmasq dnsmasq-full || true
@@ -99,8 +113,8 @@ rm -rf /var/opkg-lists/* /tmp/dnsmasq-full-ipset.ipk
 EOF
 
 FROM scratch AS export
-LABEL droidspaces.name="OpenWrt 24.10 - IPSet (iptables-legacy)" \
+LABEL droidspaces.name="OpenWrt 24.10 - IPSet + TProxy (iptables-legacy)" \
       droidspaces.distro="OpenWrt" \
-      droidspaces.description="Droidspaces OpenWrt rootfs for Android kernels: fw3 and iptables-legacy with dnsmasq-full compiled for legacy IPSet only." \
+      droidspaces.description="Droidspaces OpenWrt rootfs for Android kernels: fw3, legacy IPSet dnsmasq-full, and TProxy xtables user-space extensions." \
       droidspaces.author="android-openwrt"
 COPY --from=customizer / /

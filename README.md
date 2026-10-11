@@ -14,6 +14,10 @@ enabled to create downloadable GitHub release assets.
 
 - Target: `armsr/armv8`; package ABI: `aarch64_generic`.
 - Firewall: `fw3` + `iptables-legacy`; nftables is deliberately absent.
+- Transparent proxy: includes the `TPROXY`, `socket`, and `CONNMARK` xtables
+  user-space extensions for Android kernels that already expose the matching
+  netfilter targets. OpenWrt `.ko` kernel modules are intentionally not kept
+  in the rootfs because Droidspaces uses the Android host kernel.
 - Userland `ipset` is used instead of OpenWrt's `kmod-ipt-ipset`, because the
   Droidspaces container shares Android's host kernel.
 - Do not later install the repository `dnsmasq-full`, which can replace this
