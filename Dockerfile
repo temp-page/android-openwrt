@@ -1,7 +1,7 @@
 # Droidspaces OpenWrt 24.10 rootfs with an IPSet-only dnsmasq-full.
 ARG OPENWRT_VERSION=24.10.7
 
-FROM --platform=linux/aarch64_generic openwrt/rootfs:armsr-armv8-${OPENWRT_VERSION} AS upstream
+FROM --platform=linux/arm64 openwrt/rootfs:armsr-armv8-${OPENWRT_VERSION} AS upstream
 FROM scratch AS customizer
 COPY --from=upstream / /
 COPY artifacts/dnsmasq-full-ipset.ipk /tmp/dnsmasq-full-ipset.ipk
