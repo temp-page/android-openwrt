@@ -13,6 +13,11 @@ COPY artifacts/dnsmasq-full-ipset.ipk /tmp/dnsmasq-full-ipset.ipk
 RUN <<'EOF'
 set -eux
 mkdir -p /var/lock /var/run /tmp
+# OpenWrt moves maintained user-space packages to the release branch feed.
+# The fixed 24.10.7 directory can retain a stale Packages index after the
+# referenced LuCI IPKs have been pruned, causing third-party LuCI packages
+# to fail dependency downloads.
+sed -i 's#releases/24.10.7/packages/aarch64_generic/luci#releases/packages-24.10/aarch64_generic/luci#' /etc/opkg/distfeeds.conf
 opkg update
 opkg remove --force-depends firewall4 nftables-json kmod-nft-offload kmod-nft-nat kmod-nft-fib kmod-nft-core || true
 # Install LuCI explicitly.  The Docker rootfs base is intentionally minimal
