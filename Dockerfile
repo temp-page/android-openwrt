@@ -19,7 +19,7 @@ ln -sf /usr/sbin/ip6tables-legacy /usr/sbin/ip6tables
 opkg remove --force-depends dnsmasq dnsmasq-full || true
 opkg install /tmp/dnsmasq-full-ipset.ipk
 dnsmasq --version | grep -q 'ipset'
-! dnsmasq --version | grep -q 'nftset'
+dnsmasq --version | grep -q 'no-nftset'
 
 grep -q '^aid_inet:' /etc/group || echo 'aid_inet:x:3003:root' >> /etc/group
 grep -q '^aid_net_raw:' /etc/group || echo 'aid_net_raw:x:3004:root' >> /etc/group
