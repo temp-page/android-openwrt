@@ -18,7 +18,8 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     env:
-      OPENWRT_REF: openwrt-24.10
+      OPENWRT_VERSION: 24.10.7
+      SDK_URL: https://downloads.openwrt.org/releases/24.10.7/targets/armsr/armv8/openwrt-sdk-24.10.7-armsr-armv8_gcc-13.3.0_musl.Linux-x86_64.tar.zst
     steps:
       - uses: actions/checkout@v4
 
@@ -33,16 +34,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential clang flex bison g++ gawk \
             gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev \
-            python3-setuptools rsync unzip zlib1g-dev file wget jq xz-utils
+            python3-setuptools rsync unzip zlib1g-dev file wget jq xz-utils zstd
           printf '%s | prerequisites installed\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" | tee -a build-progress.log
 
-      - name: Fetch and configure OpenWrt
+      - name: Fetch and configure the OpenWrt SDK
         run: |
-          printf '%s | cloning OpenWrt source\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" | tee -a build-progress.log
-          git clone --depth 1 --branch "$OPENWRT_REF" https://github.com/openwrt/openwrt.git openwrt
-          ./openwrt/scripts/feeds update -a
-          ./openwrt/scripts/feeds install -a
-          cp openwrt-ipset.config openwrt/.config
+          printf '%s | downloading prebuilt OpenWrt SDK\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" | tee -a build-progress.log
+          curl --fail --location --retry 3 --output openwrt-sdk.tar.zst "$SDK_URL"
+          mkdir openwrt
+          tar --use-compress-program=unzstd --strip-components=1 -xf openwrt-sdk.tar.zst -C openwrt
+          cat openwrt-ipset.config >> openwrt/.config
           # IPSet support in dnsmasq uses kernel UAPI headers only.  Do not
           # make its IPK depend on an OpenWrt 6.6 kmod: Droidspaces uses the
           # Android host kernel, and building the kmod also drags in a full
@@ -56,12 +57,6 @@ jobs:
         run: |
           set -o pipefail
           {
-            printf '%s | downloading source archives\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" | tee -a build-progress.log
-            make -C openwrt download -j"$(nproc)"
-            printf '%s | building host tools\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" | tee -a build-progress.log
-            make -C openwrt tools/install -j"$(nproc)" V=s
-            printf '%s | building cross toolchain\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" | tee -a build-progress.log
-            make -C openwrt toolchain/install -j"$(nproc)" V=s
             printf '%s | building IPSet-only dnsmasq-full\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" | tee -a build-progress.log
             make -C openwrt package/network/services/dnsmasq/compile -j"$(nproc)" V=s
           } 2>&1 | tee build-dnsmasq.log
@@ -73,9 +68,9 @@ jobs:
           ! grep -q 'kmod-ipt-ipset' artifacts/dnsmasq-control.txt
           ar p artifacts/dnsmasq-full-ipset.ipk data.tar.gz | tar -xzOf - ./usr/sbin/dnsmasq > artifacts/dnsmasq
           chmod +x artifacts/dnsmasq
-          artifacts/dnsmasq --version | tee artifacts/dnsmasq-version.txt
-          grep -q 'ipset' artifacts/dnsmasq-version.txt
-          ! grep -q 'nftset' artifacts/dnsmasq-version.txt
+          strings artifacts/dnsmasq > artifacts/dnsmasq-strings.txt
+          grep -qi 'ipset' artifacts/dnsmasq-strings.txt
+          ! grep -qi 'nftset' artifacts/dnsmasq-strings.txt
           printf '%s | dnsmasq package verified\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" | tee -a build-progress.log
 
       - uses: docker/setup-qemu-action@v3
