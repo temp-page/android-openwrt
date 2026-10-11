@@ -15,7 +15,13 @@ set -eux
 mkdir -p /var/lock /var/run /tmp
 opkg update
 opkg remove --force-depends firewall4 nftables-json kmod-nft-offload kmod-nft-nat kmod-nft-fib kmod-nft-core || true
-opkg install firewall iptables-zz-legacy ip6tables-zz-legacy ipset coreutils-base64 shadow-utils
+# Install LuCI explicitly.  The Docker rootfs base is intentionally minimal
+# and does not promise to include a HTTP management service.  Avoid the broad
+# `luci` meta package because it pulls the firewall UI package, which targets
+# firewall4/nftables; the selected modules provide the normal admin UI while
+# keeping fw3/iptables-legacy intact.
+opkg install firewall iptables-zz-legacy ip6tables-zz-legacy ipset coreutils-base64 shadow-utils \
+  uhttpd uhttpd-mod-ubus rpcd luci-base luci-mod-admin-full luci-theme-bootstrap
 ln -sf /usr/sbin/iptables-legacy /usr/sbin/iptables
 ln -sf /usr/sbin/ip6tables-legacy /usr/sbin/ip6tables
 
@@ -30,6 +36,8 @@ grep -q '^aid_net_raw:' /etc/group || echo 'aid_net_raw:x:3004:root' >> /etc/gro
 grep -q '^aid_net_admin:' /etc/group || echo 'aid_net_admin:x:3005:root' >> /etc/group
 usermod -a -G aid_inet,aid_net_raw root || true
 opkg remove --force-depends shadow-utils
+
+/etc/init.d/uhttpd enable
 
 cat >/etc/config/network <<'NETEOF'
 config interface 'loopback'
